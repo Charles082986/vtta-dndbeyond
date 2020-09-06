@@ -111,6 +111,27 @@ let getWeaponFlags = (ddb, data) => {
 
   return flags;
 };
+let parseTags = (ddb, data, character) => {
+  const tags = data.definition.tags;
+  logger.debug("Experimental parseTags feature", data);
+  if (tags.includes("Consumable")) {
+    return parsePotion(data);
+  }
+  if (tags.includes("Damage")) {
+    const flags = getWeaponFlags(ddb, data, character);
+    return parseWeapon(data, character, flags);
+  }
+  if (tags.includes("Outerwear")) {
+    return parseArmor(data, character);
+  }
+  if (tags.includes("Container")) {
+    return parseLoot(data); // Need parseContainer function, possible support ItemCollection module?
+  }
+  if (tags.includes("Instrument")) {
+    return parseTool(ddb, data);
+  }
+  return parseLoot(data);
+}
 
 let otherGear = (ddb, data, character) => {
   let item = {};
@@ -124,6 +145,12 @@ let otherGear = (ddb, data, character) => {
     case "Ammunition":
       item = parseAmmunition(data);
       break;
+    case undefined:
+    case "Adventuring Gear": {
+      item = parseTags(ddb, data, character);
+      logger.debug("Experimental parseTags result", item);
+      break;
+    }
     default:
       // Final exceptions
       switch (data.definition.name) {
@@ -142,6 +169,7 @@ let parseItem = (ddb, data, character) => {
     // is it a weapon?
     let item = {};
     if (data.definition.filterType) {
+      logger.debug("parseItem data", data);
       switch (data.definition.filterType) {
         case "Weapon": {
           if (data.definition.type === "Ammunition" || data.definition.subType === "Ammunition") {
@@ -174,9 +202,10 @@ let parseItem = (ddb, data, character) => {
           item = otherGear(ddb, data, character);
           break;
         }
-        default:
+        default: {
           item = parseLoot(data, character);
           break;
+        }
       }
     } else {
       // try parsing it as a custom item
